@@ -1,6 +1,10 @@
 # Veb
 
-**TODO: Add description**
+## TODO
+1. Add Elixir protocol support.
+2. Add MultiVeb, VebMap modules.
+3. 写彩蛋膜拜冰封大神
+4. 上传至Hex.pm
 
 ## Installation
 
