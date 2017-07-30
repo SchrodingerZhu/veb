@@ -1,11 +1,11 @@
 # written by SchrodingerZhu, provided together with love and good wishes.
 defmodule Veb do
   @moduledoc """
-  This is an functional implement of the Integer data structure, van Emde Boas tree. As it's in the functional environment, the data structure actually implementd is the RS-vEB tree, which is the normal VEB improved in the time complexity of creation and the space complexity of storage.
+  This is an functional implement of the Integer data structure, van Emde Boas tree. As it's in the functional environment, the data structure actually implemented is the RS-vEB tree, which is the normal VEB improved in the time complexity of creation and the space complexity of storage.
 
-  Currently, this module has implemented insert, delete, successor, predecessor operantions, the time complexity of which is $O(\log{\log{u}})$, where $u$ is the size of the data universe. And there are also operations like fromList, toList, which are based on those basic operations.
+  Currently, this module has implemented insert, delete, successor, predecessor operations, the time complexity of which is $O(\log{\log{u}})$, where $u$ is the size of the data universe. And there are also operations like fromList, toList, which are based on those basic operations.
 
-  There exists an limitation of $u$, that is, $u$ must a power of the $2$. However, a automatical deriving method is written in creating operations, you can simply provide the max value of your data, and then the $u$ will be calculated easily.
+  There exists an limitation of $u$, that is, $u$ must be a power of the $2$. However, a automatical deriving method is written in creating operations, you can simply provide the max value of your data, and then the $u$ will be calculated easily.
 
   As it is promised in the paper, the space complexity is $O(n)$, where $n$ is the number os your data. According to some randomized tests, the speed of this implement is not bad.
   """
@@ -354,6 +354,178 @@ defmodule Veb do
       <> "]>"
     end
   end
-  
-
 end
+
+defmodule VebMap do
+  use Bitwise
+
+  @behaviour Access
+  @type data :: {non_neg_integer, any}
+  defstruct map: %{}, tree: Veb.__struct__
+
+  def new(limit, mode \\ :by_max) do
+    %VebMap{map: %{}, tree: Veb.new(limit, mode)}
+  end
+
+  def has_key?(vm, key) do
+    Map.has_key?(vm.map, key)
+  end
+
+  def put_new(vm, key, value) do
+    if has_key?(vm, key) do
+      vm
+    else
+      %VebMap{vm | map: Map.put_new(vm.map, key, value), tree: Veb.insert(vm.tree, key)}
+    end
+  end
+
+  def delete(vm, key) do
+    if has_key?(vm, key) do
+      %VebMap{vm | map: Map.delete(vm.map, key), tree: Veb.delete(vm.tree, key)}
+    else
+      vm
+    end
+  end
+
+  def fetch!(vm, key) do
+    Map.fetch!(vm.map, key)
+  end
+
+  def fetch(vm, key) do
+    Map.fetch(vm.map, key)
+  end
+
+  def equal?(vm1, vm2) do
+    Map.equal?(vm1.map, vm2.map)
+  end
+
+  def drop(vm, []), do: vm
+  def drop(vm, [head | tail]), do: drop(delete(vm, head), tail)
+
+  def values(vm) do
+    Map.values(vm.map)
+  end
+
+  def update!(vm, key, fun) do
+    %VebMap{vm | map: Map.update!(vm.map, key, fun)}
+  end
+
+  def update(vm, key, initial, fun) do
+    if has_key?(vm, key) do
+      update!(vm, key, fun)
+    else
+      put_new(vm, key, initial)
+    end
+  end
+
+  def to_list(vm) do
+    Map.to_list(vm.map)
+  end
+
+  def take(vm, keys) do
+    Map.take(vm.map, keys)
+  end
+
+  def split(vm, keys) do
+    vm.map
+    |> Map.split(keys)
+    |> (fn {a, b} -> {from_map(a, 1 <<< vm.tree.log_u, :by_u), from_map(b, 1 <<< vm.tree.log_u, :by_u)} end).()
+  end
+  
+  def from_map(map, limit \\ 0, mode \\ :auto) do
+    %VebMap{map: map, tree: map |> Map.keys() |> Veb.fromList(limit, mode)}
+  end
+
+  def replace!(vm, key, value) do
+    %VebMap{vm | map: Map.replace!(vm.map, key, value)}
+  end
+
+  def replace(vm, key, value) do
+    if has_key?(vm, key) do
+      replace!(vm, key, value)
+    else
+      vm
+    end
+  end
+
+  def put_new_lazy(vm, key, fun) do
+    if has_key?(vm, key) do
+      vm
+    else
+      put_new(vm, key, fun.())
+    end
+  end
+
+  def put(vm, key, value) do
+    %VebMap{map: Map.put(vm.map, key, value), tree: Veb.insert(vm.tree, key)}
+  end
+
+  def pop(vm, key, default \\ nil) do
+    if has_key?(vm, key) do
+      {ele, new_map} = Map.pop(vm.map, key, default)
+      {ele, %VebMap{map: new_map, tree: Veb.delete(vm.tree, key)}}
+    else
+      {default, vm}
+    end
+  end
+
+  def pop_lazy(vm, key, fun) do
+    if has_key?(vm, key) do
+      {ele, new_map} = Map.pop(vm.map, key, fun)
+      {ele, %VebMap{map: new_map, tree: Veb.delete(vm.tree, key)}}
+    else
+      {fun.(), vm}
+    end
+  end
+  ## not right
+  def merge(vm1, vm2, callback) do
+    new_map = Map.merge(vm1, vm2, callback)
+    from_map(new_map, 1 <<< max(vm1.tree.log_u, vm2.tree.log_u), :by_u)
+  end
+  ## not right
+  def merge(vm1, vm2) do
+    new_map = Map.merge(vm1, vm2)
+    from_map(new_map, 1 <<< max(vm1.tree.log_u, vm2.tree.log_u), :by_u)
+  end
+
+  def keys(vm) do
+    Map.keys(vm.map)
+  end
+
+  def get(vm, key, default \\ nil) do
+    Map.get(vm.map, key, default)
+  end
+
+  def get_lazy(vm, key, fun) do
+    Map.get_lazy(vm.map, key, fun)
+  end
+
+  ## Not Right
+
+  def get_and_update!(vm, key, fun) do
+    %VebMap{vm | map: Map.get_and_update!(vm.map, key, fun)}
+  end
+
+  def get_and_update(vm, key, fun) do
+    if has_key?(vm, key) do
+      if vm |> fetch!(key) |> fun.() == :pop do
+        pop(vm, key)
+      else
+        get_and_update!(vm, key, fun)
+      end
+    else
+      pop(vm, key)
+    end
+  end
+
+
+
+
+  defimpl Inspect do
+    def inspect(vm, _opt \\ []) do
+      "VebMap<" <> Kernel.inspect(vm.map) <> "%>"
+    end
+  end
+end
+
+
