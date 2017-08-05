@@ -23,7 +23,7 @@ defmodule VebTest do
   end
 
   test "member?" do
-    indexes = (fn -> Enum.random(0..@random_max) end) |> Stream.repeatedly |> Enum.take(@size)
+    indexes = (fn -> Enum.random(0..@random_max) end) |> Stream.repeatedly() |> Enum.take(@size)
     data = gen_data() 
     veb = Veb.from_list(data)
     a = Enum.map(indexes, fn x -> Enum.member?(data, x) end)
@@ -47,4 +47,12 @@ defmodule VebTest do
       |> Enum.map(fn x -> to_list_with_succ(x, x.min, []) end)
     assert a == b
   end
+  test "delete" do
+    indexes = (fn -> Enum.random(0..@random_max) end) |> Stream.repeatedly() |> Enum.take(@size)
+    data = gen_data() 
+    veb = Veb.from_list(data)
+    b = List.foldl(indexes, veb, fn (x, acc) -> Veb.delete(acc, x) end) |> Veb.to_list()
+    assert (data -- indexes)  == b
+  end
+
 end

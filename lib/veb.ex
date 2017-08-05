@@ -304,7 +304,7 @@ defmodule Veb do
   end
 
   defp delete_process_two({v, x}) do
-    {%Veb{v | cluster: %{v.cluster | high(x, v.log_u) => delete(v.cluster[high(x, v.log_u)], low(x, v.log_u))}} ,x}
+    {%Veb{v | cluster: %{v.cluster | high(x, v.log_u) => delete_unsafe(v.cluster[high(x, v.log_u)], low(x, v.log_u))}} ,x}
   end
 
   defp delete_process_three({v, x}) do
@@ -316,7 +316,7 @@ defmodule Veb do
   end
 
   defp delete_sub_process_one({v, x}) do
-    {%Veb{v | summary: delete(v.summary, high(x, v.log_u))}, x}
+    {%Veb{v | summary: delete_unsafe(v.summary, high(x, v.log_u))}, x}
   end
 
   defp delete_sub_process_two({v, x}) do
@@ -338,20 +338,29 @@ defmodule Veb do
   """
   def delete!(v, x) do
     case member?(v, x) do
-      true -> delete(v, x)
+      true -> delete_unsafe(v, x)
       false ->
         raise(Veb.DeleteError, "key value not exist")
     end
   end
 
-  
-
-  @spec delete(t | nil, non_neg_integer) :: t | nil
+  @spec delete(t | nil, non_neg_integer) :: t | nil | {:error, t}
   @doc """
-  Delete the given element from the tree, do nothing when not exist.
+  Delete the given element from the tree, if not exist, do nothing.
   """
-  def delete(nil, _x), do: nil
   def delete(v, x) do
+    case member?(v, x) do
+      true -> delete_unsafe(v, x)
+      false -> v
+    end
+  end
+  
+  @spec delete_unsafe(t | nil, non_neg_integer) :: t | nil
+  @doc """
+  Delete the given element from the tree, may cause unexpected result when the key is invalid.
+  """
+  def delete_unsafe(nil, _x), do: nil
+  def delete_unsafe(v, x) do
     cond do
       v.min == v.max && v.min == x -> %Veb{Veb.__struct__ | log_u: v.log_u}
       v.log_u == 1 ->
