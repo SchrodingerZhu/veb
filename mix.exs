@@ -7,6 +7,13 @@ defmodule Veb.Mixfile do
      elixir: "~> 1.4",
      build_embedded: Mix.env == :prod,
      start_permanent: Mix.env == :prod,
+     name: "veb",
+     licenses: ["MIT"],
+     maintainers: ["SchrodingerZhu(朱一帆)"],
+     links: %{"SchrodingerZhu's GitHub" => "https://github.com/SchrodingerZhu"},
+     source_url: "https://github.com/SchrodingerZhu/veb",
+     description: description(),
+     package: package(),
      deps: deps()]
   end
 
@@ -29,5 +36,20 @@ defmodule Veb.Mixfile do
   # Type "mix help deps" for more examples and options
   defp deps do
     [{:ex_doc, "~> 0.14", only: :dev, runtime: false}]
+  end
+  defp package do
+    [
+      name: :veb,
+      licenses: ["MIT"],
+      maintainers: ["SchrodingerZhu(朱一帆)"],
+      links: %{"SchrodingerZhu's GitHub" => "https://github.com/SchrodingerZhu"},
+      source_url: "https://github.com/SchrodingerZhu/veb",
+      description: description(),
+      deps: deps()]
+  end
+  defp description do
+    """
+    Veb is a data structure to maintain the information of integers.
+    """
   end
 end

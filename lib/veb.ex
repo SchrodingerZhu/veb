@@ -1,9 +1,23 @@
 # written by SchrodingerZhu, provided together with love and good wishes.
+defmodule Veb.InsertError do
+  defexception [:message]
+  def exception(reason) do
+    %Veb.InsertError{message: "error during inserting: #{reason}"}
+  end
+end
+
+defmodule Veb.DeleteError do
+  defexception [:message]
+  def exception(reason) do
+    %Veb.DeleteError{message: "error during deleting: #{reason}"}
+  end
+end
+
 defmodule Veb do
   @moduledoc """
   This is an functional implement of the Integer data structure, van Emde Boas tree. As it's in the functional environment, the data structure actually implemented is the RS-vEB tree, which is the normal VEB improved in the time complexity of creation and the space complexity of storage.
 
-  Currently, this module has implemented insert, delete, successor, predecessor operations, the time complexity of which is $O(\log{\log{u}})$, where $u$ is the size of the data universe. And there are also operations like fromList, toList, which are based on those basic operations.
+  Currently, this module has implemented insert!, delete, successor, predecessor operations, the time complexity of which is $O(\log{\log{u}})$, where $u$ is the size of the data universe. And there are also operations like from_list, to_list, which are based on those basic operations.
 
   There exists an limitation of $u$, that is, $u$ must be a power of the $2$. However, a automatical deriving method is written in creating operations, you can simply provide the max value of your data, and then the $u$ will be calculated easily.
 
@@ -11,7 +25,7 @@ defmodule Veb do
   """
 
   @typedoc """
-  Type t stands for the RS-vEB tree. It is filled with nil and empty map when no element is inserted, and dynamically built as inserting and deleting.
+  Type t stands for the RS-vEB tree. It is filled with nil and empty map when no element is insert!ed, and dynamically built as insert!ing and deleting.
   """
   defstruct log_u: 0, min: nil, max: nil, summary: nil, cluster: %{}
   @type t :: %Veb{log_u: non_neg_integer, min: nil | non_neg_integer, max: nil | non_neg_integer, summary: nil | t, cluster: %{} | %{required(non_neg_integer) => t}}
@@ -47,25 +61,25 @@ defmodule Veb do
   #                                                   #
   #####################################################
 
-  @spec getBits(non_neg_integer) :: non_neg_integer
+  @spec get_bits(non_neg_integer) :: non_neg_integer
   @doc """
   Return the count of the valid binary bits of the given number.
   """
-  def getBits(0), do: 0
-  def getBits(n) when n >= (1 <<< 128), do: __getBits(n >>> 128, 128)
-  def getBits(n), do: guessBits(n, 0, 128, 128)
+  def get_bits(0), do: 0
+  def get_bits(n) when n >= (1 <<< 128), do: __get_bits(n >>> 128, 128)
+  def get_bits(n), do: guess_bits(n, 0, 128, 128)
 
-  defp __getBits(0, ans), do: ans
-  defp __getBits(n, ans) when n >= (1 <<< 128), do: __getBits(n >>> 128, 128 + ans)
-  defp __getBits(n, ans), do: __getBits(0, ans + guessBits(n, 0, 128, 128))
+  defp __get_bits(0, ans), do: ans
+  defp __get_bits(n, ans) when n >= (1 <<< 128), do: __get_bits(n >>> 128, 128 + ans)
+  defp __get_bits(n, ans), do: __get_bits(0, ans + guess_bits(n, 0, 128, 128))
   
-  defp guessBits(_, l, r, ans) when l > r, do: ans
-  defp guessBits(n, l, r, ans) do
+  defp guess_bits(_, l, r, ans) when l > r, do: ans
+  defp guess_bits(n, l, r, ans) do
     mid = (l + r) >>> 1;
     if(n >>> mid == 0) do
-      guessBits(n, l, mid - 1, mid)
+      guess_bits(n, l, mid - 1, mid)
     else
-      guessBits(n, mid + 1, r, ans)
+      guess_bits(n, mid + 1, r, ans)
     end
   end
 
@@ -104,12 +118,12 @@ defmodule Veb do
     end
   end
 
-  ## This code block is filled with functions used in the insert method.
-  defp emInsert(v, x) do
+  ## This code block is filled with functions used in the insert! method.
+  defp empty_insert!(v, x) do
     %Veb{v | min: x, max: x}
   end
 
-  defp insProcessOne({v, x}) do
+  defp insert_process_one({v, x}) do
     if x < v.min do
       {%Veb{v | min: x}, v.min}
     else
@@ -117,7 +131,7 @@ defmodule Veb do
     end
   end
 
-  defp insProcessThree({v, x}) do
+  defp insert_process_three({v, x}) do
     if x > v.max do
       %Veb{v | max: x}
     else
@@ -125,27 +139,27 @@ defmodule Veb do
     end
   end
 
-  defp checkPos(v, pos) do
+  defp check_pos(v, pos) do
     case v.cluster[pos] do
       nil -> %Veb{v | cluster: v.cluster |> Map.put_new(pos, %Veb{__struct__() | log_u: v.log_u >>> 1})}
       _ -> v
     end
   end
 
-  defp checkSummary(v) do
+  defp check_summary(v) do
     case v.summary do
       nil -> %Veb{v | summary: %Veb{log_u: (v.log_u + 1) >>> 1, min: nil, max: nil, summary: nil, cluster: %{}}}
       _ -> v
     end
   end
 
-  defp insProcessTwo({v, x}) do
+  defp insert_process_two({v, x}) do
     if v.log_u == 1 do
       {v, x}
     else
-      newV = v |> checkPos(high(x, v.log_u)) |> checkSummary()
+      newV = v |> check_pos(high(x, v.log_u)) |> check_summary()
       if min(newV.cluster[high(x, v.log_u)]) == nil do
-        {%Veb{newV | summary: insert_unsafe(newV.summary, high(x, v.log_u)), cluster: %{newV.cluster | high(x, v.log_u) => emInsert(newV.cluster[high(x, v.log_u)], low(x, v.log_u))}}, x}
+        {%Veb{newV | summary: insert_unsafe(newV.summary, high(x, v.log_u)), cluster: %{newV.cluster | high(x, v.log_u) => empty_insert!(newV.cluster[high(x, v.log_u)], low(x, v.log_u))}}, x}
       else
         {%Veb{newV | cluster: %{newV.cluster | high(x, v.log_u) => insert_unsafe(newV.cluster[high(x, v.log_u)], low(x, v.log_u))}}, x}
       end
@@ -158,43 +172,56 @@ defmodule Veb do
   """
   def new(limit, mode \\ :by_max) do
     case mode do
-      :by_max -> %Veb{__struct__() | log_u: getBits(limit)}
-      :by_u -> %Veb{__struct__() | log_u: getBits(limit) - 1}
+      :by_max -> %Veb{__struct__() | log_u: get_bits(limit)}
+      :by_u -> %Veb{__struct__() | log_u: get_bits(limit) - 1}
     end
   end
 
   @spec insert_unsafe(t, non_neg_integer) :: t
   @doc """
-  Insert an element unsafely, you should make sure that the element is within the bound and without repeats.
+  insert! an element unsafely, you should make sure that the element is within the bound.
   """
   def insert_unsafe(v, x) do
     if v. min == nil do
-      emInsert(v, x)
+      empty_insert!(v, x)
     else
-      {v, x} |> insProcessOne() |> insProcessTwo() |> insProcessThree()
+      {v, x} |> insert_process_one() |> insert_process_two() |> insert_process_three()
     end
   end
 
-  @spec insert(t, non_neg_integer) :: t | :error
+  @spec insert!(t, non_neg_integer) :: t
   @doc """
-  Insert an element with overflow and repeating check.
+  insert an element with overflow check.
   """
-  def insert(v, x) do
+  def insert!(v, x) do
     cond do
-      x >= (1 <<< v.log_u) || x < 0 -> :error
-      member?(v, x) -> v
+      x >= (1 <<< v.log_u) || x < 0 ->
+        raise(Veb.InsertError, "invalid key value")
+      member?(v, x) ->
+        raise(Veb.InsertError, "already inserted")
       true -> insert_unsafe(v, x)
     end
   end
 
-  @spec fromList(list, non_neg_integer, :auto | :by_max | :by_u) :: t
+  @spec insert(t, non_neg_integer) :: t | {:error, t}
+  @doc """
+  insert an element, if existed, do nothing. Or return {:error, v} when the value is not valid.
+  """
+  def insert(v, x) do
+    cond do
+      x >= (1 <<< v.log_u) || x < 0 -> {:error, v}
+      true -> insert_unsafe(v, x)
+    end
+  end
+
+  @spec from_list(list, non_neg_integer, :auto | :by_max | :by_u) :: t
   @doc """
   Create a tree from a list. Similarily as the new(), you can change the mode by providing the atom. \":auto\" is set as default, which is to enum the list to find the max value.
   """
-  def fromList(list, limit \\ 0, mode \\ :auto) do
+  def from_list(list, limit \\ 0, mode \\ :auto) do
     case mode do
-      :auto -> List.foldl(list, new(Enum.max(list), :by_max), fn x, acc -> Veb.insert(acc, x) end)
-      mode -> List.foldl(list, new(limit, mode), fn x, acc -> Veb.insert(acc, x) end)
+      :auto -> List.foldl(list, new(Enum.max(list), :by_max), fn x, acc -> Veb.insert!(acc, x) end)
+      mode -> List.foldl(list, new(limit, mode), fn x, acc -> Veb.insert!(acc, x) end)
     end
   end
 
@@ -265,7 +292,7 @@ defmodule Veb do
   end
 
   ## This code block is filled with functions used by delete operations.
-  defp delProcessOne({v, x}) do
+  defp delete_process_one({v, x}) do
     if x == v.min do
       first_cluster = min(v.summary)
       newX = index(first_cluster, min(v.cluster[first_cluster]), v.log_u)
@@ -276,23 +303,23 @@ defmodule Veb do
     end
   end
 
-  defp delProcessTwo({v, x}) do
+  defp delete_process_two({v, x}) do
     {%Veb{v | cluster: %{v.cluster | high(x, v.log_u) => delete(v.cluster[high(x, v.log_u)], low(x, v.log_u))}} ,x}
   end
 
-  defp delProcessThree({v, x}) do
+  defp delete_process_three({v, x}) do
     cond do
-      min(v.cluster[high(x, v.log_u)]) == nil -> {v, x} |> delSubProcessOne() |> delSubProcessTwo()
+      min(v.cluster[high(x, v.log_u)]) == nil -> {v, x} |> delete_sub_process_one() |> delete_sub_process_two()
       x == v.max -> %Veb{v | max: index(high(x, v.log_u), max(v.cluster[high(x, v.log_u)]), v.log_u)}
       true -> v
     end
   end
 
-  defp delSubProcessOne({v, x}) do
+  defp delete_sub_process_one({v, x}) do
     {%Veb{v | summary: delete(v.summary, high(x, v.log_u))}, x}
   end
 
-  defp delSubProcessTwo({v, x}) do
+  defp delete_sub_process_two({v, x}) do
     if x == v.max do
       summary_max = max(v.summary)
       if summary_max == nil do
@@ -305,25 +332,28 @@ defmodule Veb do
     end
   end
 
-  @spec delete(t | nil, non_neg_integer) :: t | nil
+  @spec delete!(t | nil, non_neg_integer) :: t | nil
   @doc """
-  Delete the given element from the tree with check.
+  Delete the given element from the tree, if not exist, raise an error.
   """
-  def delete(v, x) do
+  def delete!(v, x) do
     case member?(v, x) do
-      true -> delete_unsafe(v, x)
-      false -> v
+      true -> delete(v, x)
+      false ->
+        raise(Veb.DeleteError, "key value not exist")
     end
   end
 
-  @spec delete_unsafe(t | nil, non_neg_integer) :: t | nil
+  
+
+  @spec delete(t | nil, non_neg_integer) :: t | nil
   @doc """
-  Delete the given element from the tree unsafely. You should make sure that the element is in the tree.
+  Delete the given element from the tree, do nothing when not exist.
   """
-  def delete_unsafe(nil, _x), do: nil
-  def delete_unsafe(v, x) do
+  def delete(nil, _x), do: nil
+  def delete(v, x) do
     cond do
-      v.min == v.max && v.min == x -> nil
+      v.min == v.max && v.min == x -> %Veb{Veb.__struct__ | log_u: v.log_u}
       v.log_u == 1 ->
         if x == 0 do
           %Veb{v | min: 1, max: 1}
@@ -331,199 +361,27 @@ defmodule Veb do
           %Veb{v | min: 0, max: 0}
         end
       true ->
-        {v, x} |> delProcessOne() |> delProcessTwo() |> delProcessThree()
+        {v, x} |> delete_process_one() |> delete_process_two() |> delete_process_three()
     end
   end
 
-  @spec toList(t) :: list
+  @spec to_list(t) :: list
   @doc """
   Create a list from a tree. Note that nil tree is not supported and will cause runtime error.
   """
-  def toList(v) do
-    __toList(v, v.max, [])
+  def to_list(v) do
+    __to_list(v, v.max, [])
   end
-  defp __toList(_v, nil, list), do: list
-  defp __toList(v, cur, list), do: __toList(v, Veb.pred(v, cur), [cur | list])
+  defp __to_list(_v, nil, list), do: list
+  defp __to_list(v, cur, list), do: __to_list(v, Veb.pred(v, cur), [cur | list])
 
   defimpl Inspect do
     def inspect(v, _opt \\ []) do
       "#Veb<[maxValueLimit: "
       <> Kernel.inspect((1 <<< v.log_u) - 1)
       <> ", data: "
-      <> Kernel.inspect(Veb.toList(v))
+      <> Kernel.inspect(Veb.to_list(v))
       <> "]>"
-    end
-  end
-end
-
-defmodule VebMap do
-  use Bitwise
-
-  @behaviour Access
-  @type data :: {non_neg_integer, any}
-  defstruct map: %{}, tree: Veb.__struct__
-
-  def new(limit, mode \\ :by_max) do
-    %VebMap{map: %{}, tree: Veb.new(limit, mode)}
-  end
-
-  def has_key?(vm, key) do
-    Map.has_key?(vm.map, key)
-  end
-
-  def put_new(vm, key, value) do
-    if has_key?(vm, key) do
-      vm
-    else
-      %VebMap{vm | map: Map.put_new(vm.map, key, value), tree: Veb.insert(vm.tree, key)}
-    end
-  end
-
-  def delete(vm, key) do
-    if has_key?(vm, key) do
-      %VebMap{vm | map: Map.delete(vm.map, key), tree: Veb.delete(vm.tree, key)}
-    else
-      vm
-    end
-  end
-
-  def fetch!(vm, key) do
-    Map.fetch!(vm.map, key)
-  end
-
-  def fetch(vm, key) do
-    Map.fetch(vm.map, key)
-  end
-
-  def equal?(vm1, vm2) do
-    Map.equal?(vm1.map, vm2.map)
-  end
-
-  def drop(vm, []), do: vm
-  def drop(vm, [head | tail]), do: drop(delete(vm, head), tail)
-
-  def values(vm) do
-    Map.values(vm.map)
-  end
-
-  def update!(vm, key, fun) do
-    %VebMap{vm | map: Map.update!(vm.map, key, fun)}
-  end
-
-  def update(vm, key, initial, fun) do
-    if has_key?(vm, key) do
-      update!(vm, key, fun)
-    else
-      put_new(vm, key, initial)
-    end
-  end
-
-  def to_list(vm) do
-    Map.to_list(vm.map)
-  end
-
-  def take(vm, keys) do
-    Map.take(vm.map, keys)
-  end
-
-  def split(vm, keys) do
-    vm.map
-    |> Map.split(keys)
-    |> (fn {a, b} -> {from_map(a, 1 <<< vm.tree.log_u, :by_u), from_map(b, 1 <<< vm.tree.log_u, :by_u)} end).()
-  end
-  
-  def from_map(map, limit \\ 0, mode \\ :auto) do
-    %VebMap{map: map, tree: map |> Map.keys() |> Veb.fromList(limit, mode)}
-  end
-
-  def replace!(vm, key, value) do
-    %VebMap{vm | map: Map.replace!(vm.map, key, value)}
-  end
-
-  def replace(vm, key, value) do
-    if has_key?(vm, key) do
-      replace!(vm, key, value)
-    else
-      vm
-    end
-  end
-
-  def put_new_lazy(vm, key, fun) do
-    if has_key?(vm, key) do
-      vm
-    else
-      put_new(vm, key, fun.())
-    end
-  end
-
-  def put(vm, key, value) do
-    %VebMap{map: Map.put(vm.map, key, value), tree: Veb.insert(vm.tree, key)}
-  end
-
-  def pop(vm, key, default \\ nil) do
-    if has_key?(vm, key) do
-      {ele, new_map} = Map.pop(vm.map, key, default)
-      {ele, %VebMap{map: new_map, tree: Veb.delete(vm.tree, key)}}
-    else
-      {default, vm}
-    end
-  end
-
-  def pop_lazy(vm, key, fun) do
-    if has_key?(vm, key) do
-      {ele, new_map} = Map.pop(vm.map, key, fun)
-      {ele, %VebMap{map: new_map, tree: Veb.delete(vm.tree, key)}}
-    else
-      {fun.(), vm}
-    end
-  end
-  ## not right
-  def merge(vm1, vm2, callback) do
-    new_map = Map.merge(vm1, vm2, callback)
-    from_map(new_map, 1 <<< max(vm1.tree.log_u, vm2.tree.log_u), :by_u)
-  end
-  ## not right
-  def merge(vm1, vm2) do
-    new_map = Map.merge(vm1, vm2)
-    from_map(new_map, 1 <<< max(vm1.tree.log_u, vm2.tree.log_u), :by_u)
-  end
-
-  def keys(vm) do
-    Map.keys(vm.map)
-  end
-
-  def get(vm, key, default \\ nil) do
-    Map.get(vm.map, key, default)
-  end
-
-  def get_lazy(vm, key, fun) do
-    Map.get_lazy(vm.map, key, fun)
-  end
-
-  ## Not Right
-
-  def get_and_update!(vm, key, fun) do
-    %VebMap{vm | map: Map.get_and_update!(vm.map, key, fun)}
-  end
-
-  def get_and_update(vm, key, fun) do
-    if has_key?(vm, key) do
-      if vm |> fetch!(key) |> fun.() == :pop do
-        pop(vm, key)
-      else
-        get_and_update!(vm, key, fun)
-      end
-    else
-      pop(vm, key)
-    end
-  end
-
-
-
-
-  defimpl Inspect do
-    def inspect(vm, _opt \\ []) do
-      "VebMap<" <> Kernel.inspect(vm.map) <> "%>"
     end
   end
 end
