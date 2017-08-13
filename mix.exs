@@ -3,7 +3,7 @@ defmodule Veb.Mixfile do
 
   def project do
     [app: :veb,
-     version: "0.1.0",
+     version: "0.2.0",
      elixir: "~> 1.4",
      build_embedded: Mix.env == :prod,
      start_permanent: Mix.env == :prod,
@@ -49,7 +49,7 @@ defmodule Veb.Mixfile do
   end
   defp description do
     """
-    Veb is a data structure to maintain the information of integers.
+    This is the functional implement of van Emde Boas Tree, which can maintain the information of Integers efficiently.
     """
   end
 end
