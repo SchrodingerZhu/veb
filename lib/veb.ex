@@ -384,6 +384,36 @@ defmodule Veb do
   defp __to_list(_v, nil, list), do: list
   defp __to_list(v, cur, list), do: __to_list(v, Veb.pred(v, cur), [cur | list])
 
+
+  defimpl Enumerable do
+    def member?(v, num) do
+      {:ok, Veb.member?(v, num)}
+    end
+
+    def count(_v) do
+      {:error, __MODULE__}
+    end
+
+    def reduce(v, acc, fun) do
+      __reduce({v, v.min}, acc, fun)
+    end
+
+    defp __reduce(_, {:halt, acc}, _fun), do: {:halted, acc}
+    defp __reduce({v, cur}, {:suspend, acc}, fun), do: {:suspended, acc, &__reduce({v, cur}, &1, fun)}
+    defp __reduce({_v, nil}, {:cont, acc}, _fun), do: {:done, acc}
+    defp __reduce({v, cur}, {:cont, acc}, fun), do: __reduce({v, Veb.succ(v, cur)}, fun.(cur, acc), fun)
+  end
+
+  defimpl Collectable do
+    def into(original) do
+      {original, fn
+        veb, {:cont, x} -> Veb.insert!(veb, x)
+        veb, :done -> veb
+        _, :halt -> :ok
+      end}
+    end
+  end
+
   defimpl Inspect do
     def inspect(v, _opt \\ []) do
       "#Veb<[maxValueLimit: "
