@@ -166,7 +166,7 @@ defmodule Veb do
     end
   end
 
-  @spec new(non_neg_integer, :by_max | :by_u) :: t
+  @spec new(non_neg_integer, :by_max | :by_u | :by_logu) :: t
   @doc """
   Create a tree, using the given $u$, or deriving $u$ from the given max value. The second mode is set as default. You can change the mode by providing the atom.
   """
@@ -174,6 +174,7 @@ defmodule Veb do
     case mode do
       :by_max -> %Veb{__struct__() | log_u: get_bits(limit)}
       :by_u -> %Veb{__struct__() | log_u: get_bits(limit) - 1}
+      :by_logu -> %Veb{__struct__() | log_u: limit}
     end
   end
 
@@ -214,14 +215,14 @@ defmodule Veb do
     end
   end
 
-  @spec from_list(list, non_neg_integer, :auto | :by_max | :by_u) :: t
+  @spec from_list(list, non_neg_integer, :auto | :by_max | :by_u | :by_logu) :: t
   @doc """
   Create a tree from a list. Similarily as the new(), you can change the mode by providing the atom. \":auto\" is set as default, which is to enum the list to find the max value.
   """
   def from_list(list, limit \\ 0, mode \\ :auto) do
-    case mode do
-      :auto -> List.foldl(list, new(Enum.max(list), :by_max), fn x, acc -> Veb.insert!(acc, x) end)
-      mode -> List.foldl(list, new(limit, mode), fn x, acc -> Veb.insert!(acc, x) end)
+    cond do
+      mode == :auto || limit <= 0 -> List.foldl(list, new(Enum.max(list), :by_max), fn x, acc -> Veb.insert!(acc, x) end)
+      true -> List.foldl(list, new(limit, mode), fn x, acc -> Veb.insert!(acc, x) end)
     end
   end
 
