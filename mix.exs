@@ -3,8 +3,8 @@ defmodule Veb.Mixfile do
 
   def project do
     [app: :veb,
-     version: "0.2.1",
-     elixir: "~> 1.4",
+     version: "0.2.3",
+     elixir: "~> 1.7",
      build_embedded: Mix.env == :prod,
      start_permanent: Mix.env == :prod,
      name: "veb",
@@ -35,7 +35,7 @@ defmodule Veb.Mixfile do
   #
   # Type "mix help deps" for more examples and options
   defp deps do
-    [{:ex_doc, "~> 0.14", only: :dev, runtime: false}]
+    [{:ex_doc, "~> 0.19-rc", only: :dev, runtime: false}]
   end
   defp package do
     [

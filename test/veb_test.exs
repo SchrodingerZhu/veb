@@ -1,8 +1,8 @@
 defmodule VebTest do
   use ExUnit.Case
   doctest Veb
-  @random_max 5211314
-  @size 10000
+  @random_max 100000
+  @size 1000
   defp gen_data() do
     (fn -> Enum.random(0..@random_max) end)
     |> Stream.repeatedly()
@@ -53,6 +53,16 @@ defmodule VebTest do
     veb = Veb.from_list(data)
     b = List.foldl(indexes, veb, fn (x, acc) -> Veb.delete(acc, x) end) |> Veb.to_list()
     assert (data -- indexes)  == b
+  end
+  test "slice" do
+    data = gen_data()
+    veb = Veb.from_list(data)
+    res =
+      Stream.repeatedly(fn -> {Enum.random(0..10000), Enum.random(0..1000)} end)
+      |> Enum.take(1000)
+      |> Enum.map(fn {a, b} -> Enum.slice(veb, a, b) == Enum.slice(data, a, b) end)
+    |> Enum.reduce(true, &(&1 && &2))
+    assert res
   end
 
 end

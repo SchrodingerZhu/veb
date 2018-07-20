@@ -403,6 +403,10 @@ defmodule Veb do
     defp __reduce({v, cur}, {:suspend, acc}, fun), do: {:suspended, acc, &__reduce({v, cur}, &1, fun)}
     defp __reduce({_v, nil}, {:cont, acc}, _fun), do: {:done, acc}
     defp __reduce({v, cur}, {:cont, acc}, fun), do: __reduce({v, Veb.succ(v, cur)}, fun.(cur, acc), fun)
+
+    def slice(v) do
+      {:ok, Enum.count(v), &Enum.slice(Veb.to_list(v), &1, &2)}
+    end
   end
 
   defimpl Collectable do
